@@ -186,12 +186,87 @@ static inline t_block color_pair_get(const short fg, const short bg) {
 }
 
 /******************************************************************************
+ * The terminal color used for each color definition (index: definition minus
+ * COL_DEF_OFFSET).
+ *****************************************************************************/
+
+static short _color_index[COL_DEF_NUM];
+
+/******************************************************************************
+ * The squared distance of two rgb colors with values from 0 to 255.
+ *****************************************************************************/
+
+static long color_dist(const int r1, const int g1, const int b1, const int r2, const int g2, const int b2) {
+	return (long) (r1 - r2) * (r1 - r2) + (long) (g1 - g2) * (g1 - g2) + (long) (b1 - b2) * (b1 - b2);
+}
+
+/******************************************************************************
+ * The function returns the index of the nearest color of the xterm 256 color
+ * palette: the 6x6x6 color cube (16 - 231) or the grey ramp (232 - 255). The
+ * color definition has values from 0 to 999.
+ *****************************************************************************/
+
+static short color_nearest_256(const int c_def[3]) {
+	static const int levels[6] = { 0, 95, 135, 175, 215, 255 };
+
+	int rgb[3], cube[3];
+
+	for (int i = 0; i < 3; i++) {
+		rgb[i] = c_def[i] * 255 / COLOR_VALUE_MAX;
+
+		cube[i] = 0;
+		for (int l = 1; l < 6; l++) {
+			if (abs(levels[l] - rgb[i]) < abs(levels[cube[i]] - rgb[i])) {
+				cube[i] = l;
+			}
+		}
+	}
+
+	short best = 16 + 36 * cube[0] + 6 * cube[1] + cube[2];
+	long best_dist = color_dist(rgb[0], rgb[1], rgb[2], levels[cube[0]], levels[cube[1]], levels[cube[2]]);
+
+	for (int g = 0; g < 24; g++) {
+		const int v = 8 + 10 * g;
+		const long dist = color_dist(rgb[0], rgb[1], rgb[2], v, v, v);
+
+		if (dist < best_dist) {
+			best_dist = dist;
+			best = 232 + g;
+		}
+	}
+
+	return best;
+}
+
+/******************************************************************************
+ * The function returns the nearest of the 8 basic colors.
+ *****************************************************************************/
+
+static short color_nearest_8(const int c_def[3]) {
+	static const int basic[8][3] = { { 0, 0, 0 }, { 205, 0, 0 }, { 0, 205, 0 }, { 205, 205, 0 }, { 0, 0, 238 }, { 205, 0, 205 }, { 0, 205, 205 }, { 229, 229, 229 } };
+
+	const int r = c_def[0] * 255 / COLOR_VALUE_MAX;
+	const int g = c_def[1] * 255 / COLOR_VALUE_MAX;
+	const int b = c_def[2] * 255 / COLOR_VALUE_MAX;
+
+	short best = 0;
+
+	for (short i = 1; i < 8; i++) {
+		if (color_dist(r, g, b, basic[i][0], basic[i][1], basic[i][2]) < color_dist(r, g, b, basic[best][0], basic[best][1], basic[best][2])) {
+			best = i;
+		}
+	}
+
+	return best;
+}
+
+/******************************************************************************
  * Simple wrapper that initializes a color pair with error handling.
  *****************************************************************************/
 
 static short colors_init_pair(const short pair, const short fg, const short bg) {
 
-	if (init_pair(pair, fg, bg) != OK) {
+	if (init_pair(pair, _color_index[fg - COL_DEF_OFFSET], _color_index[bg - COL_DEF_OFFSET]) != OK) {
 		log_exit("Unable to init color pair: %d fg: %d bg: %d", pair, fg, bg);
 	}
 
@@ -248,7 +323,26 @@ static void color_def_allocate(int c_defs[][3], const int num, const int offset)
 
 	for (int i = 0; i < num; i++) {
 
-		colors_init_color(i + offset, c_defs[i][0], c_defs[i][1], c_defs[i][2]);
+		//
+		// With 256 colors the nearest color of the xterm palette is used, so
+		// the terminal palette stays as it is (many terminals that claim to
+		// change colors, and tmux and screen, do not).
+		//
+		if (COLORS >= 256) {
+			_color_index[i] = color_nearest_256(c_defs[i]);
+		}
+
+		//
+		// Fewer colors: redefine them if the terminal can, else use the
+		// nearest of the 8 basic colors.
+		//
+		else if (can_change_color() && COLORS > offset + num) {
+			colors_init_color(i + offset, c_defs[i][0], c_defs[i][1], c_defs[i][2]);
+			_color_index[i] = i + offset;
+
+		} else {
+			_color_index[i] = color_nearest_8(c_defs[i]);
+		}
 	}
 }
 
@@ -487,10 +581,6 @@ void colors_init() {
 	//
 	if (!has_colors()) {
 		log_exit_str("Terminal does not support colors!");
-	}
-
-	if (!can_change_color()) {
-		log_exit_str("Terminal does not support color changes!");
 	}
 
 	//
