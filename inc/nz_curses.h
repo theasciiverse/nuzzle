@@ -32,6 +32,8 @@ void nzc_init_curses();
 
 void nzc_finish_curses();
 
+int nzc_getch(WINDOW *win);
+
 WINDOW* nzc_win_create_fully();
 
 void nzc_win_del(WINDOW *win);

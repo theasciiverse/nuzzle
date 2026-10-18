@@ -24,6 +24,7 @@
 
 #include <ncurses.h>
 #include <menu.h>
+#include <signal.h>
 
 #include "common.h"
 
@@ -57,6 +58,52 @@ static void nzc_finish_mouse() {
 	// Disable mouse movement events, as l = low
 	//
 	printf("\033[?1003l\n");
+}
+
+/******************************************************************************
+ * SIGTERM and SIGHUP set a flag, which nzc_getch() turns into a 'q', so the
+ * terminal is reset (mouse tracking included) and the game exits normally.
+ *****************************************************************************/
+
+static volatile sig_atomic_t _quit_requested = 0;
+
+static void nzc_signal_handler(int sig) {
+	(void) sig;
+	_quit_requested = 1;
+}
+
+static void nzc_init_signals() {
+	struct sigaction sa;
+
+	memset(&sa, 0, sizeof(sa));
+	sa.sa_handler = nzc_signal_handler;
+	sigemptyset(&sa.sa_mask);
+
+	//
+	// No SA_RESTART: the signal interrupts wgetch(), which returns ERR.
+	//
+	sigaction(SIGTERM, &sa, NULL);
+	sigaction(SIGHUP, &sa, NULL);
+}
+
+/******************************************************************************
+ * The function reads a key. Ctrl+C (a key in raw mode) and a SIGTERM or
+ * SIGHUP are returned as 'q', which quits.
+ *****************************************************************************/
+
+int nzc_getch(WINDOW *win) {
+
+	if (_quit_requested) {
+		return 'q';
+	}
+
+	const int c = wgetch(win);
+
+	if (_quit_requested || c == 3) {
+		return 'q';
+	}
+
+	return c;
 }
 
 /******************************************************************************
@@ -105,6 +152,8 @@ void nzc_init_curses() {
 	// or FALSE, except as noted." which seems not to be correct.
 	//
 	set_escdelay(0);
+
+	nzc_init_signals();
 
 	nzc_init_mouse();
 }

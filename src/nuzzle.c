@@ -308,7 +308,7 @@ int main() {
 	game_win_refresh();
 
 	for (;;) {
-		int c = wgetch(stdscr);
+		int c = nzc_getch(stdscr);
 
 		//
 		// Exit with 'q'

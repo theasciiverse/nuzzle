@@ -302,7 +302,7 @@ static int wm_event_loop(WINDOW *menu_win, MENU *menu, const bool ignore_esc) {
 
 	while (true) {
 
-		c = wgetch(menu_win);
+		c = nzc_getch(menu_win);
 
 		//
 		// Quit
@@ -420,7 +420,7 @@ static int wm_process_menu_once(const char **labels, const int selected, const b
 		nzc_win_refresh(stdscr);
 
 		for (;;) {
-			const int c = wgetch(stdscr);
+			const int c = nzc_getch(stdscr);
 
 			if (c == 'q') {
 				exit(EXIT_SUCCESS);
