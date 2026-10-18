@@ -289,6 +289,10 @@ static WINDOW* wm_create_centered_derwin(WINDOW *win_parent, const s_point *dim)
  *
  *****************************************************************************/
 
+#define RESIZE_RETURN -2
+
+static int _resize_idx = 0;
+
 static int wm_event_loop(WINDOW *menu_win, MENU *menu, const bool ignore_esc) {
 	int c;
 
@@ -376,13 +380,11 @@ static int wm_event_loop(WINDOW *menu_win, MENU *menu, const bool ignore_esc) {
 		} else if (c == KEY_RESIZE) {
 
 			//
-			// We need the refresh to add the default color pairs if the window
-			// is enlarged.
+			// The menu is created again, centered on the new size, with the
+			// current item still selected.
 			//
-			nzc_win_refresh(stdscr);
-
-			// TODO: center the menu. this means, the menu has to be unposted,
-			// then centered and then posted again.
+			_resize_idx = nzc_menu_cur_item_idx(menu);
+			return RESIZE_RETURN;
 		}
 	}
 }
@@ -393,7 +395,7 @@ static int wm_event_loop(WINDOW *menu_win, MENU *menu, const bool ignore_esc) {
  * resources are allocated and freed.
  *****************************************************************************/
 
-int wm_process_menu(const char **labels, const int selected, const bool ignore_esc) {
+static int wm_process_menu_once(const char **labels, const int selected, const bool ignore_esc) {
 	MENU *menu;
 	WINDOW *menu_win;
 	WINDOW *menu_derwin;
@@ -406,6 +408,30 @@ int wm_process_menu(const char **labels, const int selected, const bool ignore_e
 
 	const s_point dim_header = strs_dim(headers);
 	const s_point dim_total = { .row = dim_header.row + dim_labels.row, .col = dim_header.col };
+
+	//
+	// If the terminal is too small for the menu, ask for a bigger one and wait
+	// for the resize.
+	//
+	if (getmaxy(stdscr) < dim_total.row || getmaxx(stdscr) < dim_total.col) {
+		werase(stdscr);
+		mvwaddnstr(stdscr, 0, 0, "Terminal too small", getmaxx(stdscr));
+		mvwaddnstr(stdscr, 1, 0, "q quits", getmaxx(stdscr));
+		nzc_win_refresh(stdscr);
+
+		for (;;) {
+			const int c = wgetch(stdscr);
+
+			if (c == 'q') {
+				exit(EXIT_SUCCESS);
+			}
+
+			if (c == KEY_RESIZE) {
+				_resize_idx = selected;
+				return RESIZE_RETURN;
+			}
+		}
+	}
 
 	//
 	// Create a two dimensional array for the centered labels.
@@ -456,6 +482,24 @@ int wm_process_menu(const char **labels, const int selected, const bool ignore_e
 	const int idx = wm_event_loop(menu_win, menu, ignore_esc);
 
 	wm_free(menu_win, menu_derwin, menu);
+
+	return idx;
+}
+
+/******************************************************************************
+ * The function processes the menu. If the terminal is resized, the screen is
+ * cleared and the menu is created again in the center.
+ *****************************************************************************/
+
+int wm_process_menu(const char **labels, const int selected, const bool ignore_esc) {
+	int idx = wm_process_menu_once(labels, selected, ignore_esc);
+
+	while (idx == RESIZE_RETURN) {
+		werase(stdscr);
+		nzc_win_refresh(stdscr);
+
+		idx = wm_process_menu_once(labels, _resize_idx, ignore_esc);
+	}
 
 	return idx;
 }
