@@ -351,7 +351,7 @@ static int wm_event_loop(WINDOW *menu_win, MENU *menu, const bool ignore_esc) {
 			MEVENT event;
 
 			if (getmouse(&event) != OK) {
-				log_exit_str("Unable to get mouse event!");
+				continue;
 			}
 
 			WINDOW *win_sub = menu_sub(menu);

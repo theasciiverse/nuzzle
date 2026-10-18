@@ -249,9 +249,10 @@ static void process_mouse_event(s_status *status) {
 	if (getmouse(&event) != OK) {
 
 		//
-		// Report the details of the mouse event.
+		// Ignore events that cannot be read (a mouse sequence that was cut
+		// off, or an event outside the mask).
 		//
-		log_exit("Unable to get mouse event! mask: %s coords: %d/%d/%d", bool_str(event.bstate == 0), event.x, event.y, event.z);
+		log_debug("Unable to get mouse event! mask: %s coords: %d/%d/%d", bool_str(event.bstate == 0), event.x, event.y, event.z);
 		return;
 	}
 
@@ -384,7 +385,12 @@ int main() {
 				//					game_event_next_home_area(&_status);
 				//				}
 
-				game_event_drop(&_status);
+				//
+				// Only blocks that are picked up can be dropped.
+				//
+				if (s_status_is_picked_up(&_status)) {
+					game_event_drop(&_status);
+				}
 				break;
 
 			default:

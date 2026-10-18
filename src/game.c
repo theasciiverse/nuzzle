@@ -35,6 +35,9 @@
 #include "bg_area.h"
 #include "rules.h"
 
+#include <errno.h>
+#include <time.h>
+
  /******************************************************************************
   * Definition of a sleep time. It is used between the dropping of an area and
   * the deletion of blocks. The pause gives the user the chance to see, why the
@@ -200,6 +203,22 @@ static bool do_adjust(const s_area *game_area, const s_area *drop_area, s_area *
 }
 
 /******************************************************************************
+ * The function pauses for USLEEP microseconds. A signal (a terminal resize
+ * sends SIGWINCH) does not end the pause early or the game.
+ *****************************************************************************/
+
+static void game_sleep() {
+	struct timespec ts = { .tv_sec = USLEEP / 1000000, .tv_nsec = (USLEEP % 1000000) * 1000L };
+
+	while (nanosleep(&ts, &ts) == -1) {
+
+		if (errno != EINTR) {
+			log_exit("Sleep failed: %s", strerror(errno));
+		}
+	}
+}
+
+/******************************************************************************
  * The function moves the drop area to a given position.
  *****************************************************************************/
 
@@ -234,9 +253,7 @@ static void animate_move(WINDOW *win, const s_status *status, s_area *game_area,
 	//
 	// Sleep to show the movement
 	//
-	if (usleep(USLEEP) == -1) {
-		log_exit("Sleep failed: %s", strerror(errno));
-	}
+	game_sleep();
 }
 
 /******************************************************************************
@@ -262,9 +279,7 @@ static void animate_drop(WINDOW *win, const s_status *status, s_area *game_area,
 	//
 	// Sleep to show the movement
 	//
-	if (usleep(USLEEP) == -1) {
-		log_exit("Sleep failed: %s", strerror(errno));
-	}
+	game_sleep();
 }
 
 /******************************************************************************
