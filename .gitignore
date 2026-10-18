@@ -3,3 +3,8 @@ nuzzle
 ut_test
 *.gz
 *.deb
+# Asciiverse packaging
+out/
+stage/
+dist/
+__pycache__/
