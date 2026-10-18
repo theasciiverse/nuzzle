@@ -40,6 +40,8 @@
 
 #define NUZZLE_CFG_DIR_HOME ".nuzzle"
 
+#define NUZZLE_DATA_DIR "nuzzle"
+
 #define NUZZLE_CFG_DIR_REL "cfg"
 
 #define NUZZLE_CFG_FILE "nuzzle.cfg"

@@ -25,6 +25,12 @@
 #include <limits.h>
 #include <errno.h>
 #include <sys/stat.h>
+#include <unistd.h>
+
+#if defined(__APPLE__)
+#include <mach-o/dyld.h>
+#include <stdint.h>
+#endif
 
 #include "common.h"
 #include "file_system.h"
@@ -74,9 +80,12 @@ bool fs_entry_exists(const char *path, const bool reg_file) {
 }
 
 /******************************************************************************
- * The function creates the path of the nuzzle directory, which is:
+ * The function writes the user specific nuzzle directory to the path. This is
+ * the nuzzle folder in the XDG data directory:
  *
- *   <HOME>/.nuzzle
+ *   $XDG_DATA_HOME/nuzzle (default: $HOME/.local/share/nuzzle)
+ *
+ * An existing $HOME/.nuzzle from an older version is used as it is.
  *****************************************************************************/
 
 void fs_nuzzle_dir_get(char *path, const int size) {
@@ -86,21 +95,41 @@ void fs_nuzzle_dir_get(char *path, const int size) {
 	//
 	const char *homedir;
 
-	if ((homedir = getenv("HOME")) == NULL) {
+	if ((homedir = getenv("HOME")) == NULL || homedir[0] == '\0') {
 		log_exit_str("Home directory not found!");
 	}
 
 	//
-	// Get the nuzzle directory.
+	// An existing $HOME/.nuzzle is kept.
 	//
 	if (snprintf(path, size, "%s/%s", homedir, NUZZLE_CFG_DIR_HOME) >= size) {
+		log_exit_str("Path is too long!");
+	}
+
+	if (fs_entry_exists(path, CHECK_DIR)) {
+		return;
+	}
+
+	//
+	// The XDG data directory, which has to be an absolute path.
+	//
+	const char *datadir = getenv("XDG_DATA_HOME");
+
+	int len;
+
+	if (datadir != NULL && datadir[0] == '/') {
+		len = snprintf(path, size, "%s/%s", datadir, NUZZLE_DATA_DIR);
+	} else {
+		len = snprintf(path, size, "%s/.local/share/%s", homedir, NUZZLE_DATA_DIR);
+	}
+
+	if (len >= size) {
 		log_exit_str("Path is too long!");
 	}
 }
 
 /******************************************************************************
- * The function checks if the nuzzle directory exists. If not, it will be
- * created.
+ * The function creates the nuzzle directory with its parents if necessary.
  *****************************************************************************/
 
 void fs_nuzzle_dir_ensure() {
@@ -112,11 +141,60 @@ void fs_nuzzle_dir_ensure() {
 	fs_nuzzle_dir_get(path, PATH_MAX);
 
 	//
-	// If the directory does not exist, we create it.
+	// Create each missing directory of the path.
 	//
-	if (!fs_entry_exists(path, CHECK_DIR) && mkdir(path, S_IRWXU | S_IRWXG) == -1) {
-		log_exit("Unable to create directory: %s - %s", path, strerror(errno));
+	for (char *ptr = path + 1; ; ptr++) {
+
+		if (*ptr != '/' && *ptr != '\0') {
+			continue;
+		}
+
+		const char tmp = *ptr;
+		*ptr = '\0';
+
+		if (!fs_entry_exists(path, CHECK_DIR) && mkdir(path, S_IRWXU) == -1 && errno != EEXIST) {
+			log_exit("Unable to create directory: %s - %s", path, strerror(errno));
+		}
+
+		*ptr = tmp;
+
+		if (tmp == '\0') {
+			break;
+		}
 	}
+}
+
+/******************************************************************************
+ * The function writes the directory of the nuzzle executable to the path. It
+ * returns false if it cannot be found.
+ *****************************************************************************/
+
+static bool fs_exe_dir_get(char *path, const int size) {
+
+#if defined(__APPLE__)
+	uint32_t len = size;
+
+	if (_NSGetExecutablePath(path, &len) != 0) {
+		return false;
+	}
+#else
+	const ssize_t len = readlink("/proc/self/exe", path, size - 1);
+
+	if (len <= 0) {
+		return false;
+	}
+
+	path[len] = '\0';
+#endif
+
+	char *slash = strrchr(path, '/');
+	if (slash == NULL) {
+		return false;
+	}
+
+	*slash = '\0';
+
+	return true;
 }
 
 /*******************************************************************************
@@ -141,7 +219,7 @@ bool fs_get_cfg_file(const char *name, char *path, const int size) {
 	}
 
 	//
-	// check: <home>/.nuzzle/<file>
+	// check: <nuzzle data dir>/<file>
 	//
 	char tmp[PATH_MAX];
 	fs_nuzzle_dir_get(tmp, PATH_MAX);
@@ -156,7 +234,22 @@ bool fs_get_cfg_file(const char *name, char *path, const int size) {
 	}
 
 	//
-	// check: /etc/nuzzle/<file>
+	// check: <dir of the executable>/cfg/<file>
+	//
+	if (fs_exe_dir_get(tmp, PATH_MAX)) {
+
+		if (snprintf(path, size, "%s/%s/%s", tmp, NUZZLE_CFG_DIR_REL, name) >= size) {
+			log_exit("Truncated: %s/%s/%s", tmp, NUZZLE_CFG_DIR_REL, name);
+		}
+
+		if (fs_entry_exists(path, CHECK_FILE)) {
+			log_debug("File exists: %s", path);
+			return true;
+		}
+	}
+
+	//
+	// check: <prefix>/share/games/nuzzle/<file>
 	//
 	if (snprintf(path, size, "%s/%s", NUZZLE_CFG_DIR_SYS, name) >= size) {
 		log_exit("Truncated: %s/%s", NUZZLE_CFG_DIR_SYS, name);

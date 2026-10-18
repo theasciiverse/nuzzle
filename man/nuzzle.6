@@ -92,10 +92,14 @@ Nuzzle first looks in the \fIcfg\fR directory inside the working directory of
 the user. This is necessary to ensure that nuzzle finds configurations after a
 build with \fImake\fR. 
 .\"-----------------------------------------------------------------------------
-.IP ${HOME}/.nuzzle/
+.IP ${XDG_DATA_HOME}/nuzzle/
 Nuzzle uses this directory to store user specific files like the score files for
-the games. This is the recommended directory to place customized configuration
-files.
+the games (\fI~/.local/share/nuzzle/\fR when XDG_DATA_HOME is not set; an
+existing \fI~/.nuzzle/\fR from an older version is used instead). This is the
+recommended directory to place customized configuration files.
+.\"-----------------------------------------------------------------------------
+.IP <directory of the nuzzle executable>/cfg/
+The default configurations shipped beside the executable.
 .\"-----------------------------------------------------------------------------
 .IP /usr/share/games/nuzzle/
 The last directory contains the default configurations, which are provided with 
