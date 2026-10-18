@@ -25,7 +25,7 @@
 #include <ncurses.h>
 #include <time.h>
 #include <locale.h>
-#include <linux/limits.h>
+#include <limits.h>
 
 #include "s_game_cfg.h"
 
@@ -109,7 +109,7 @@ static void init() {
 	// Register exit callback. This is used on segmentation faults and exit(0)
 	// calls.
 	//
-	if (on_exit(exit_callback, NULL) != 0) {
+	if (atexit(exit_callback) != 0) {
 		log_exit_str("Unable to register exit function!");
 	}
 

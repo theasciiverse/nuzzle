@@ -23,7 +23,7 @@
  */
 
 #include <stdio.h>
-#include <linux/limits.h>
+#include <limits.h>
 #include <errno.h>
 
 #include "init_random_shapes.h"

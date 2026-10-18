@@ -23,7 +23,7 @@
  */
 
 #include <stdio.h>
-#include <linux/limits.h>
+#include <limits.h>
 #include <errno.h>
 
 #include "s_game_cfg.h"

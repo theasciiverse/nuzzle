@@ -22,7 +22,7 @@
  * SOFTWARE.
  */
 
-#include <linux/limits.h>
+#include <limits.h>
 #include <errno.h>
 #include <sys/stat.h>
 

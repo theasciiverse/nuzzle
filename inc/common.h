@@ -30,6 +30,11 @@
 #include <stdbool.h>
 #include <string.h>
 #include <wchar.h>
+#include <limits.h>
+
+#ifndef PATH_MAX
+#define PATH_MAX 4096
+#endif
 
 #define VERSION "0.3.2"
 
