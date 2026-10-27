@@ -89,3 +89,9 @@ in a game; q, the menu's Exit, Ctrl+C, SIGTERM and SIGHUP all exit with
 status 0 and mouse tracking off. ASan and UBSan: a 90-second soak found
 the three bugs above, a 120-second soak after the fixes was clean.
 macOS: not built here.
+
+## Ours
+
+- **How to play it, at the top of README.md.** A short note on installing and
+  starting it with av, or from a release archive; the original text follows
+  unchanged.

@@ -1,3 +1,16 @@
+> **Play it with Asciiverse.** With [av](https://asciiverse.sh), the Asciiverse
+> client:
+>
+> ```
+> av install nuzzle
+> av play nuzzle
+> ```
+>
+> Or download the archive for your system from this repository's Releases,
+> unpack it and run `./nuzzle` (`nuzzle.exe` on Windows).
+>
+> The original README follows.
+
 # Nuzzle (N-curses p-UZZLE)
 
 Nuzzle is a terminal based puzzle game collection. It is implemented with 
