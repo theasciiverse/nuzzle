@@ -7,7 +7,7 @@
 > ```
 >
 > Or download the archive for your system from this repository's Releases,
-> unpack it and run `./nuzzle` (`nuzzle.exe` on Windows).
+> unpack it and run `./nuzzle`.
 >
 > The original README follows.
 
