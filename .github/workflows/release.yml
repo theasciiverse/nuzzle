@@ -1,14 +1,17 @@
 # Builds nuzzle for the Asciiverse catalog: one archive per target,
 # nuzzle-<target>.tar.gz, plus SHA256SUMS, attached to a GitHub release
 # (hub/catalog/SCHEMA.md, release.source = "github"). Runs on a pushed tag
-# of ours (v<version>-av.<n>; upstream's own v0.3.2 style tags do not
-# match), or by hand for an existing tag.
+# of ours (<version>+<snapshot date>-av.<n>, e.g. 0.3.2+20230714-av.2;
+# upstream's own v0.3.2 style tags do not match), or by hand for an
+# existing tag.
 #
 # Linux builds run in Alpine and link ncursesw and menuw statically, so the
 # binaries carry the -musl triple av looks for first and need no libncurses
-# on the player's machine. macOS links the system ncurses and menu, whose
-# wide-character functions need _XOPEN_SOURCE_EXTENDED. No Windows build:
-# PDCurses has no menu library.
+# on the player's machine. macOS does the same with ncurses built from
+# source for each architecture: the system's libmenu exports no symbols
+# (its SDK stub lists none, so new_menu and the rest do not link), and its
+# ncurses is 5.7. That ncurses reads the system's terminfo in
+# /usr/share/terminfo. No Windows build: PDCurses has no menu library.
 
 name: release
 
@@ -23,6 +26,8 @@ on:
 
 env:
   TAG: ${{ inputs.tag || github.ref_name }}
+  NCURSES_VERSION: "6.5"
+  NCURSES_SHA256: 136d91bc269a9a5785e5f9e980bc76ab57428f604ce3e5a5a90cebc767971cc6
 
 permissions:
   contents: write
@@ -70,9 +75,30 @@ jobs:
         with:
           ref: ${{ env.TAG }}
 
+      - name: ncurses, static, with its menu library
+        run: |
+          curl -sfLO "https://ftp.gnu.org/gnu/ncurses/ncurses-$NCURSES_VERSION.tar.gz"
+          echo "$NCURSES_SHA256  ncurses-$NCURSES_VERSION.tar.gz" | shasum -a 256 -c
+          tar -xzf "ncurses-$NCURSES_VERSION.tar.gz" -C "$RUNNER_TEMP"
+          rm "ncurses-$NCURSES_VERSION.tar.gz"
+          cd "$RUNNER_TEMP/ncurses-$NCURSES_VERSION"
+          # the arm64 runner cross-builds x86_64; build tools stay native
+          ./configure --build=aarch64-apple-darwin --host=${{ matrix.target }} --with-build-cc=cc \
+            CC="cc -arch ${{ matrix.arch }}" CFLAGS=-O2 \
+            --prefix="$RUNNER_TEMP/ncurses" --enable-widec --enable-overwrite \
+            --without-shared --without-debug --without-cxx --without-cxx-binding \
+            --without-ada --without-progs --without-tests --without-manpages \
+            --disable-db-install --disable-mixed-case \
+            --with-default-terminfo-dir=/usr/share/terminfo \
+            --with-terminfo-dirs=/usr/share/terminfo
+          make -j3
+          make install
+          ls "$RUNNER_TEMP/ncurses/lib"
+
       - name: Build and package
         run: |
-          CFLAGS="-O2 -arch ${{ matrix.arch }} -D_XOPEN_SOURCE_EXTENDED -D_DARWIN_C_SOURCE" LDFLAGS="-arch ${{ matrix.arch }}" LIBS="-lmenu -lncurses" asciiverse/build.sh
+          nc="$RUNNER_TEMP/ncurses"
+          CFLAGS="-O2 -arch ${{ matrix.arch }} -D_XOPEN_SOURCE_EXTENDED -D_DARWIN_C_SOURCE -I$nc/include -I$nc/include/ncursesw" LDFLAGS="-arch ${{ matrix.arch }}" LIBS="$nc/lib/libmenuw.a $nc/lib/libncursesw.a" asciiverse/build.sh
           strip out/nuzzle
           file out/nuzzle
           if [ ${{ matrix.arch }} = arm64 ]; then (cd /tmp && "$GITHUB_WORKSPACE/out/ut_test" > /dev/null); fi

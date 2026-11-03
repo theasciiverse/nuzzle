@@ -71,7 +71,11 @@ with `bin/build-pkgs.sh`, which is not used here.
   `cfg/` folder, the man page, README.md, LICENSE and this file.
 - `.github/workflows/release.yml`: static Linux in Alpine (x86_64,
   aarch64) and macOS (x86_64, arm64), plus SHA256SUMS, on our tags
-  (`*-av.*`); the unit tests run where the binary can run. No Windows
+  (`*-av.*`); the unit tests run where the binary can run. macOS links
+  ncurses 6.5 statically, built in the workflow for each architecture
+  and reading the system's terminfo: the system's `libmenu` exports no
+  symbols at all (its SDK stub lists none), so the menu cannot link
+  against it. No Windows
   build: PDCurses has no menu library, and the menu is built on it.
 - `asciiverse/record-preview.py`: records `asciiverse/nuzzle.cast`, a
   game of Lines played by a driver that reads the board and pieces from

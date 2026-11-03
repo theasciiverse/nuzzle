@@ -6,8 +6,8 @@
 #
 #   asciiverse/build.sh                                          # Linux
 #   LIBS="-lmenuw -lncursesw" LDFLAGS="-static -s" asciiverse/build.sh    # Alpine, static
-#   CFLAGS="-O2 -arch arm64 -D_XOPEN_SOURCE_EXTENDED" LDFLAGS="-arch arm64" \
-#     LIBS="-lmenu -lncurses" asciiverse/build.sh                # macOS
+#   CFLAGS="-O2 -arch arm64 -I$NC/include" LDFLAGS="-arch arm64" \
+#     LIBS="$NC/lib/libmenuw.a $NC/lib/libncursesw.a" asciiverse/build.sh  # macOS
 #
 # No Windows build: PDCurses has no menu library.
 set -eu
