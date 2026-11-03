@@ -66,7 +66,8 @@ with `bin/build-pkgs.sh`, which is not used here.
 - `asciiverse/build.sh`: compiles `src/` (two files at a time) into
   `out/nuzzle` and `out/ut_test`, with `cfg/` copied to `out/cfg/`; the
   compiler and curses libraries come from the environment. Upstream's
-  makefile is left as it is.
+  makefile is left as it is. Files are handed to `xargs` as arguments,
+  not through `-I`, which on macOS refuses a command over 255 bytes.
 - `asciiverse/package.sh`: one archive per target with the binary, its
   `cfg/` folder, the man page, README.md, LICENSE and this file.
 - `.github/workflows/release.yml`: static Linux in Alpine (x86_64,

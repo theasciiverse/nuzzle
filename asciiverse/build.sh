@@ -20,9 +20,12 @@ JOBS="${JOBS:-2}"
 mkdir -p out/obj
 rm -rf out/cfg && cp -r cfg out/cfg
 flags="-std=c11 -D_XOPEN_SOURCE=700 -D_DEFAULT_SOURCE -Wall -Wextra -Iinc $CFLAGS"
-# compile at most $JOBS files at a time
-# shellcheck disable=SC2086
-ls src/*.c | xargs -P "$JOBS" -I{} sh -c 'f={}; o=out/obj/$(basename "$f" .c).o; nice -n 10 '"$CC $flags"' -c "$f" -o "$o"'
+# compile at most $JOBS files at a time; the compiler and flags go through
+# the environment and the file as an argument, since macOS's xargs -I
+# refuses a command longer than 255 bytes
+export CC flags
+# shellcheck disable=SC2016
+ls src/*.c | xargs -P "$JOBS" -n 1 sh -c 'o=out/obj/$(basename "$1" .c).o; nice -n 10 $CC $flags -c "$1" -o "$o"' sh
 libs=$(ls out/obj/*.o | grep -v -e '/nuzzle\.o$' -e '/ut_test\.o$')
 # shellcheck disable=SC2086
 nice -n 10 $CC $CFLAGS $LDFLAGS -o out/nuzzle $libs out/obj/nuzzle.o $LIBS -lm
