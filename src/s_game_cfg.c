@@ -25,6 +25,7 @@
 #include <stdio.h>
 #include <limits.h>
 #include <errno.h>
+#include <string.h>
 
 #include "s_game_cfg.h"
 
@@ -100,7 +101,7 @@ static char *cfg_get_value(const char *line) {
 	//
 	// Get a pointer to the equals sign.
 	//
-	char *result = index(line, '=');
+	char *result = strchr(line, '=');
 
 	//
 	// Ensure that the string contains a '='.

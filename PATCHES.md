@@ -25,7 +25,9 @@ with `bin/build-pkgs.sh`, which is not used here.
 
 - **Builds with musl and on macOS.** `on_exit()` (glibc only) is now
   `atexit()`, `<linux/limits.h>` is `<limits.h>`, with a fallback for
-  `PATH_MAX`.
+  `PATH_MAX`. The config reader's `index()` (a BSD leftover from
+  `<strings.h>`, which the file never includes and macOS does not bring
+  in on its own) is `strchr()` from `<string.h>`.
 - **Scores in the XDG data folder, config beside the binary.** The score
   files moved from `~/.nuzzle` to `$XDG_DATA_HOME/nuzzle`
   (`~/.local/share/nuzzle`), made with its parents on the first saved
